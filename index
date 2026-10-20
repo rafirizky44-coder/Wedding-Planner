@@ -1,1 +1,358 @@
 
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wedding Budget Tracker | Rafi & Faradita</title>
+<style>
+:root {
+  --sage:#536b59; --sage-light:#dfe5d8; --cream:#f7f5ee;
+  --paper:#fffdf8; --ink:#30463c; --muted:#727a70;
+  --gold:#b9a77d; --line:#e4e2d8;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--cream);color:var(--ink);
+  font:14px/1.6 Arial,sans-serif
+}
+h1,h2,h3,.serif{font-family:Georgia,"Times New Roman",serif}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+nav{
+  position:sticky;top:0;z-index:10;background:#fffdf8f0;
+  border-bottom:1px solid var(--line);padding:14px 5%;
+  display:flex;justify-content:space-between;align-items:center;gap:15px;
+  flex-wrap:wrap
+}
+.brand{font:23px Georgia,serif}
+.brand small{display:block;font:10px Arial;letter-spacing:2px;color:var(--muted)}
+.links{display:flex;gap:14px;flex-wrap:wrap}
+.links a{color:var(--sage);text-decoration:none;font-size:12px}
+.links a:hover{text-decoration:underline}
+.hero{
+  padding:55px 9%;min-height:270px;
+  background:linear-gradient(110deg,#e6e8da,#f8f5eb 65%,#d5dac9);
+  display:flex;align-items:center;justify-content:space-between;gap:20px;
+  overflow:hidden
+}
+.hero h1{font-size:clamp(36px,5vw,55px);line-height:1.1;font-style:italic;font-weight:400;margin:10px 0}
+.hero p{max-width:500px;color:#58645a}
+.eyebrow{letter-spacing:3px;font-size:10px;text-transform:uppercase;color:var(--sage)}
+.quote{font:italic 17px Georgia,serif;max-width:210px;text-align:right}
+main{max-width:1250px;margin:auto;padding:22px}
+section{scroll-margin-top:90px;margin-bottom:28px}
+.grid{display:grid;gap:14px}
+.summary{grid-template-columns:repeat(3,minmax(0,1fr))}
+.card{
+  background:var(--paper);border:1px solid var(--line);border-radius:12px;
+  padding:18px;box-shadow:0 6px 20px #30463c08;min-width:0
+}
+.card h3{margin:0 0 5px;font-size:19px}
+.muted{color:var(--muted);font-size:12px}
+.big{font:27px Georgia,serif;margin:10px 0}
+.meter{height:10px;background:#e9e7de;border-radius:20px;overflow:hidden;margin:12px 0}
+.meter span{height:100%;display:block;background:var(--sage);width:0;transition:width .3s}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.section-title{margin:30px 0 13px}
+.section-title h2{font-size:27px;font-weight:400;margin:0}
+.section-title p{color:var(--muted);font-size:12px;margin:4px 0}
+.scenarios{grid-template-columns:repeat(4,minmax(0,1fr))}
+.scenario{cursor:pointer;transition:.2s}
+.scenario:hover{transform:translateY(-3px)}
+.scenario.active{border:2px solid var(--sage)}
+.price{font:25px Georgia,serif;margin:10px 0}
+.scenario ul{padding-left:18px;color:var(--muted);font-size:12px;min-height:68px}
+.btn{
+  background:var(--sage);color:white;border:0;border-radius:25px;
+  padding:10px 15px;font-weight:bold;font-size:12px
+}
+.btn:hover{background:#3f5546}
+.btn.light{background:var(--sage-light);color:var(--ink)}
+.btn.outline{background:transparent;border:1px solid var(--line);color:var(--ink)}
+.btn.small{padding:7px 10px}
+.twocol{grid-template-columns:1fr 1.3fr}
+.savings{grid-template-columns:1fr 1fr 1fr}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px;min-width:560px}
+th,td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:left}
+th{background:#f0eee5;font-weight:600}
+td input,td select,.field{
+  width:100%;min-width:75px;padding:8px;border:1px solid var(--line);
+  border-radius:6px;background:white;color:var(--ink)
+}
+form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:14px}
+form button{grid-column:1/-1}
+.pill{background:var(--sage-light);border-radius:20px;padding:5px 9px;font-size:11px}
+.status{font-size:10px;padding:4px 7px;border-radius:20px;background:#f8e4db;color:#9c4c35}
+.status.done{background:#dce9d9;color:#3f6846}
+.statbox{background:#faf9f3;border:1px solid var(--line);border-radius:9px;padding:12px}
+.statbox strong{display:block;font:20px Georgia,serif;margin-top:6px}
+.checklist{list-style:none;padding:0}
+.checklist li{display:flex;gap:9px;margin:11px 0;color:var(--muted);font-size:12px}
+input[type=checkbox]{accent-color:var(--sage)}
+.notice{font-size:11px;color:var(--muted);margin-top:12px}
+footer{text-align:center;background:#e6e7d9;padding:35px 20px;color:var(--sage)}
+footer h2{font:italic 30px Georgia,serif;margin:0}
+footer p{font-size:10px;letter-spacing:2px}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:white;padding:12px 20px;border-radius:30px;display:none;z-index:30}
+@media(max-width:900px){
+ .summary,.savings{grid-template-columns:1fr 1fr}
+ .scenarios{grid-template-columns:1fr 1fr}
+ .twocol{grid-template-columns:1fr}
+ .quote{display:none}
+}
+@media(max-width:560px){
+ main{padding:12px}.hero{padding:35px 22px}
+ .summary,.savings,.scenarios{grid-template-columns:1fr}
+ nav{position:relative}.links{gap:10px}
+ form{grid-template-columns:1fr 1fr}
+ .hero h1{font-size:38px}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="brand">❧ Rafi & Faradita
+    <small>WEDDING BUDGET TRACKER</small>
+  </div>
+  <div class="links">
+    <a href="#dashboard">Dashboard</a>
+    <a href="#skenario">Skenario</a>
+    <a href="#biaya">Rincian Biaya</a>
+    <a href="#vendor">Vendor</a>
+    <a href="#tabungan">Tabungan</a>
+    <a href="#catatan">Catatan</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div>
+    <div class="eyebrow">A little plan for our forever</div>
+    <h1>Bersama Menuju<br>Hari Istimewa</h1>
+    <p>Bukan hanya tentang perayaan, tetapi tentang awal perjalanan panjang kita bersama. Rencanakan hari bahagia dengan tenang, satu langkah demi satu langkah.</p>
+    <p class="serif"><i>— Rafi & Faradita</i></p>
+  </div>
+  <div class="quote">“Dari rencana yang baik, lahir kebahagiaan yang lebih besar.”<br><br>❧</div>
+</header>
+
+<main>
+<section id="dashboard">
+  <div class="grid summary">
+    <article class="card">
+      <h3>Ringkasan Anggaran</h3>
+      <div class="muted">Target dan realisasi pembayaran</div>
+      <div class="big" id="budgetDisplay">Rp25.000.000</div>
+      <div class="row muted"><span>Anggaran terbayar</span><strong id="paidPercent">0%</strong></div>
+      <div class="meter"><span id="paidMeter"></span></div>
+      <div class="row"><span class="muted">Sisa anggaran</span><strong id="remaining">Rp25.000.000</strong></div>
+    </article>
+
+    <article class="card">
+      <h3>Progres Tabungan</h3>
+      <div class="muted">Dana yang sudah disisihkan</div>
+      <div class="big" id="savedDisplay">Rp0</div>
+      <div class="meter"><span id="savingMeter"></span></div>
+      <div class="row muted"><span id="savingPercent">0%</span><span>dari target</span></div>
+      <div class="muted" style="margin-top:14px">Target tabungan per bulan</div>
+      <strong id="monthlyDisplay">Rp1.388.889</strong>
+    </article>
+
+    <article class="card">
+      <h3>Parameter Pernikahan</h3>
+      <label class="muted">Target anggaran (Rp)
+        <input class="field" id="budgetInput" type="number" min="0" step="500000" value="25000000">
+      </label>
+      <label class="muted" style="display:block;margin-top:10px">Lama persiapan
+        <select class="field" id="monthsInput">
+          <option value="12">12 bulan</option>
+          <option value="18" selected>18 bulan</option>
+          <option value="24">24 bulan</option>
+        </select>
+      </label>
+      <div class="row" style="margin-top:12px"><span class="muted">Perkiraan tamu</span><strong>200–400</strong></div>
+      <div class="row"><span class="muted">Lokasi</span><strong>Malang / Tulungagung</strong></div>
+    </article>
+  </div>
+</section>
+
+<section id="skenario">
+  <div class="section-title">
+    <h2>Perbandingan Skenario Budget</h2>
+    <p>Pilih skenario sesuai kemampuan dan prioritas bersama.</p>
+  </div>
+  <div class="grid scenarios" id="scenarioCards"></div>
+  <p class="notice">Catatan: Rp20–30 juta untuk 200–400 tamu termasuk anggaran ketat. Perlu tempat hemat atau milik keluarga, dekorasi sederhana, undangan digital, serta pengaturan jumlah porsi. Harga wajib dikonfirmasi ke vendor.</p>
+</section>
+
+<section id="biaya">
+  <div class="section-title">
+    <h2>Rincian Anggaran</h2>
+    <p>Nominal estimasi dihitung otomatis. Realisasi dapat kamu isi sendiri.</p>
+  </div>
+  <article class="card">
+    <div class="tablewrap">
+      <table id="categoryTable">
+        <thead><tr><th>Kategori</th><th>Persentase</th><th>Estimasi</th><th>Realisasi</th></tr></thead>
+        <tbody></tbody>
+        <tfoot><tr><th>Total</th><th id="pctTotal">100%</th><th id="estimateTotal"></th><th id="actualTotal"></th></tr></tfoot>
+      </table>
+    </div>
+    <div class="row" style="margin-top:12px;flex-wrap:wrap">
+      <button class="btn light" onclick="resetCategories()">Pulihkan Rincian</button>
+      <button class="btn" onclick="exportCSV()">Ekspor Data CSV</button>
+    </div>
+  </article>
+</section>
+
+<section id="vendor">
+  <div class="section-title">
+    <h2>Tracking Pembayaran Vendor</h2>
+    <p>Catat harga, DP, total yang sudah dibayar, dan tanggal pelunasan.</p>
+  </div>
+  <article class="card">
+    <div class="tablewrap">
+      <table id="vendorTable">
+        <thead><tr><th>Vendor</th><th>Kategori</th><th>Total</th><th>DP</th><th>Terbayar</th><th>Sisa</th><th>Jatuh Tempo</th><th>Status</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <form id="vendorForm">
+      <input class="field" id="vendorName" placeholder="Nama vendor" required>
+      <select class="field" id="vendorCategory">
+        <option>Katering</option><option>Venue / Tenda</option>
+        <option>Dekorasi</option><option>Busana & Rias</option>
+        <option>Dokumentasi</option><option>Mahar & Seserahan</option>
+        <option>Undangan & Souvenir</option><option>Akad / Administrasi</option>
+        <option>Lain-lain</option>
+      </select>
+      <input class="field" id="vendorTotal" type="number" min="0" placeholder="Total biaya (Rp)" required>
+      <input class="field" id="vendorDP" type="number" min="0" placeholder="Uang muka (Rp)" value="0">
+      <input class="field" id="vendorPaid" type="number" min="0" placeholder="Sudah dibayar (Rp)" value="0">
+      <input class="field" id="vendorDue" type="date" aria-label="Tanggal jatuh tempo">
+      <button class="btn" type="submit">＋ Tambah Vendor</button>
+    </form>
+  </article>
+</section>
+
+<section id="tabungan">
+  <div class="section-title">
+    <h2>Tabungan Bersama</h2>
+    <p>Gunakan uang yang benar-benar tersisa setelah kebutuhan hidup dan cicilan.</p>
+  </div>
+  <div class="grid savings">
+    <article class="card">
+      <h3>Target Bulanan</h3>
+      <div class="big" id="monthlyDisplay2">Rp1.388.889</div>
+      <div class="muted" id="monthlyNote">Target berdasarkan sisa anggaran dan lama persiapan.</div>
+      <div class="meter"><span id="savingMeter2"></span></div>
+      <div class="muted">Terkumpul: <strong id="savedDisplay2">Rp0</strong></div>
+    </article>
+    <article class="card">
+      <h3>Catat Setoran</h3>
+      <form id="depositForm">
+        <input class="field" id="depositor" placeholder="Nama" value="Rafi" required>
+        <input class="field" id="depositAmount" type="number" min="1" placeholder="Nominal (Rp)" required>
+        <input class="field" id="depositDate" type="date" required>
+        <button class="btn" type="submit">＋ Catat Setoran</button>
+      </form>
+      <p class="notice">Data disimpan di browser perangkat ini.</p>
+    </article>
+    <article class="card">
+      <h3>Riwayat Setoran</h3>
+      <div id="depositHistory" class="muted">Belum ada setoran.</div>
+      <button class="btn light" style="margin-top:12px" onclick="clearDeposits()">Hapus Riwayat</button>
+    </article>
+  </div>
+</section>
+
+<section id="catatan">
+  <div class="section-title">
+    <h2>Catatan & Checklist</h2>
+    <p>Langkah kecil yang membuat persiapan lebih terarah.</p>
+  </div>
+  <div class="grid twocol">
+    <article class="card">
+      <h3>Checklist Persiapan</h3>
+      <div id="checklist">
+        <label class="checklist"><input type="checkbox"> Tentukan batas jumlah tamu dan undangan keluarga.</label>
+        <label class="checklist"><input type="checkbox"> Bandingkan minimal tiga penawaran katering dan venue.</label>
+        <label class="checklist"><input type="checkbox"> Pastikan detail paket dan biaya tambahan vendor.</label>
+        <label class="checklist"><input type="checkbox"> Catat setiap DP, pelunasan, dan tanggal jatuh tempo.</label>
+        <label class="checklist"><input type="checkbox"> Siapkan dana cadangan 5–10% jika memungkinkan.</label>
+        <label class="checklist"><input type="checkbox"> Evaluasi anggaran bersama setiap bulan.</label>
+      </div>
+    </article>
+    <article class="card">
+      <h3>Catatan Kita</h3>
+      <textarea id="notes" class="field" style="min-height:160px;resize:vertical" placeholder="Contoh: prioritaskan makanan dan akad, dekorasi dibuat sederhana..."></textarea>
+      <button class="btn" style="margin-top:10px" onclick="saveNotes()">Simpan Catatan</button>
+      <p class="notice">Catatan tersimpan otomatis di browser ini.</p>
+    </article>
+  </div>
+</section>
+</main>
+
+<footer>
+  <h2>Rafi & Faradita</h2>
+  <p>MERENCANAKAN HARI INI, MENYAMBUT MASA DEPAN BERSAMA</p>
+  ♡ Sedikit demi sedikit, menjadi bukit. ♡
+</footer>
+<div id="toast"></div>
+
+<script>
+const KEY="rafiFaraditaWeddingBudget";
+const money=n=>new Intl.NumberFormat("id-ID",{style:"currency",currency:"IDR",maximumFractionDigits:0}).format(Number(n)||0);
+const initialCategories=[
+ {name:"Katering",pct:40,actual:0},
+ {name:"Venue / Tenda",pct:15,actual:0},
+ {name:"Dekorasi",pct:12,actual:0},
+ {name:"Busana & Rias",pct:10,actual:0},
+ {name:"Dokumentasi",pct:8,actual:0},
+ {name:"Mahar & Seserahan",pct:5,actual:0},
+ {name:"Undangan & Souvenir",pct:5,actual:0},
+ {name:"Akad / Administrasi",pct:2,actual:0},
+ {name:"Cadangan / Lain-lain",pct:3,actual:0}
+];
+const scenarios=[
+ {name:"Paket Hemat",budget:20000000,guests:"200–250 tamu",desc:"Tempat keluarga, dekor sederhana, undangan digital.",items:["Katering sederhana","Dekorasi minimal","Dokumentasi dasar"]},
+ {name:"Paket Sederhana",budget:25000000,guests:"250–350 tamu",desc:"Pilihan seimbang dengan kontrol ketat pada jumlah porsi.",items:["Katering menengah","Dekorasi minimalis","Dokumentasi dasar"],recommended:true},
+ {name:"Paket Menengah",budget:30000000,guests:"300–400 tamu",desc:"Batas atas target; butuh survei harga dan prioritas.",items:["Porsi lebih banyak","Dekorasi lebih detail","Dokumentasi lengkap"]},
+ {name:"Paket 400+ Tamu",budget:35000000,guests:"400+ tamu",desc:"Kemungkinan membutuhkan tambahan dana.",items:["Katering skala besar","Venue lebih luas","Cadangan biaya lebih besar"]}
+];
+let state;
+try{
+ const old=JSON.parse(localStorage.getItem(KEY)||"null");
+ state=old||{budget:25000000,months:18,categories:initialCategories,vendors:[],deposits:[],notes:"",checks:[]};
+}catch(e){state={budget:25000000,months:18,categories:initialCategories,vendors:[],deposits:[],notes:"",checks:[]}}
+function persist(){localStorage.setItem(KEY,JSON.stringify(state));render()}
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function notify(msg){const t=document.getElementById("toast");t.textContent=msg;t.style.display="block";setTimeout(()=>t.style.display="none",2000)}
+function totalSaved(){return state.deposits.reduce((sum,d)=>sum+Number(d.amount||0),0)}
+function chooseScenario(i){state.budget=scenarios[i].budget;document.getElementById("budgetInput").value=state.budget;persist();notify("Skenario dipilih")}
+function renderScenarios(){document.getElementById("scenarioCards").innerHTML=scenarios.map((s,i)=>`<article class="card scenario ${state.budget===s.budget?'active':''}"><span class="pill">${s.recommended?'Rekomendasi awal':'Pilihan anggaran'}</span><h3 style="margin-top:12px">${s.name}</h3><div class="price">${money(s.budget)}</div><div class="muted">${s.guests}</div><ul>${s.items.map(x=>`<li>${x}</li>`).join("")}</ul><p class="muted">${s.desc}</p><button class="btn ${state.budget===s.budget?'':'light'}" style="width:100%" onclick="chooseScenario(${i})">Gunakan Skenario</button></article>`).join("")}
+function renderCategories(){const body=document.querySelector("#categoryTable tbody");body.innerHTML=state.categories.map((c,i)=>`<tr><td>${esc(c.name)}</td><td><input type="number" min="0" max="100" value="${c.pct}" onchange="editCategory(${i},'pct',this.value)"></td><td>${money(state.budget*c.pct/100)}</td><td><input type="number" min="0" value="${c.actual||0}" onchange="editCategory(${i},'actual',this.value)"></td></tr>`).join("");document.getElementById("pctTotal").textContent=state.categories.reduce((a,c)=>a+Number(c.pct||0),0)+"%";document.getElementById("estimateTotal").textContent=money(state.categories.reduce((a,c)=>a+state.budget*c.pct/100,0));document.getElementById("actualTotal").textContent=money(state.categories.reduce((a,c)=>a+Number(c.actual||0),0))}
+function renderVendors(){const body=document.querySelector("#vendorTable tbody");if(!state.vendors.length){body.innerHTML='<tr><td colspan="9">Belum ada vendor. Tambahkan melalui formulir di bawah.</td></tr>';return}body.innerHTML=state.vendors.map((v,i)=>{let paid=Number(v.paid)||0,remain=Math.max(0,Number(v.total)-paid),status=remain===0?"Lunas":paid>0?"Dalam Proses":"Belum Lunas";return `<tr><td>${esc(v.name)}</td><td>${esc(v.cat)}</td><td>${money(v.total)}</td><td>${money(v.dp)}</td><td><input type="number" min="0" value="${paid}" onchange="editVendor(${i},'paid',this.value)"></td><td>${money(remain)}</td><td>${v.due||"—"}</td><td><span class="status ${remain===0?'done':''}">${status}</span></td><td><button class="btn light" onclick="removeVendor(${i})">Hapus</button></td></tr>`}).join("")}
+function renderDeposits(){let total=totalSaved(),pct=state.budget?Math.min(100,total/state.budget*100):0;document.getElementById("savedDisplay").textContent=money(total);document.getElementById("savedDisplay2").textContent=money(total);document.getElementById("savingMeter").style.width=pct+"%";document.getElementById("savingMeter2").style.width=pct+"%";document.getElementById("savingPercent").textContent=Math.round(pct)+"%";document.getElementById("depositHistory").innerHTML=state.deposits.length?state.deposits.slice().reverse().map(d=>`<div class="row" style="padding:8px 0;border-bottom:1px solid var(--line)"><span>${esc(d.who)}<br><small>${esc(d.date)}</small></span><strong>${money(d.amount)}</strong></div>`).join(""):"Belum ada setoran."}
+function render(){document.getElementById("budgetInput").value=state.budget;document.getElementById("monthsInput").value=state.months;document.getElementById("budgetDisplay").textContent=money(state.budget);let paid=state.vendors.reduce((a,v)=>a+Math.min(Number(v.paid)||0,Number(v.total)||0),0),pct=state.budget?Math.min(100,paid/state.budget*100):0;document.getElementById("paidPercent").textContent=Math.round(pct)+"%";document.getElementById("paidMeter").style.width=pct+"%";document.getElementById("remaining").textContent=money(Math.max(0,state.budget-paid));let monthly=Math.ceil(Math.max(0,state.budget-totalSaved())/Math.max(1,state.months));document.getElementById("monthlyDisplay").textContent=money(monthly);document.getElementById("monthlyDisplay2").textContent=money(monthly);document.getElementById("monthlyNote").textContent=`Target per bulan untuk ${state.months} bulan, berdasarkan sisa target dan setoran yang dicatat.`;renderScenarios();renderCategories();renderVendors();renderDeposits();document.getElementById("notes").value=state.notes||"";document.querySelectorAll("#checklist input").forEach((el,i)=>el.checked=!!state.checks[i])}
+function editCategory(i,k,v){state.categories[i][k]=Math.max(0,Number(v)||0);persist()}
+function editVendor(i,k,v){state.vendors[i][k]=Math.max(0,Number(v)||0);persist()}
+function removeVendor(i){if(confirm("Hapus catatan vendor ini?")){state.vendors.splice(i,1);persist()}}
+function resetCategories(){if(confirm("Pulihkan rincian anggaran ke persentase awal?")){state.categories=JSON.parse(JSON.stringify(initialCategories));persist()}}
+function clearDeposits(){if(confirm("Hapus semua riwayat setoran?")){state.deposits=[];persist()}}
+function saveNotes(){state.notes=document.getElementById("notes").value;persist();notify("Catatan tersimpan")}
+document.getElementById("budgetInput").addEventListener("change",e=>{state.budget=Math.max(0,Number(e.target.value)||0);persist()});
+document.getElementById("monthsInput").addEventListener("change",e=>{state.months=Number(e.target.value)||18;persist()});
+document.getElementById("vendorForm").addEventListener("submit",e=>{e.preventDefault();state.vendors.push({name:document.getElementById("vendorName").value.trim(),cat:document.getElementById("vendorCategory").value,total:Number(document.getElementById("vendorTotal").value)||0,dp:Number(document.getElementById("vendorDP").value)||0,paid:Number(document.getElementById("vendorPaid").value)||0,due:document.getElementById("vendorDue").value});e.target.reset();document.getElementById("vendorDP").value=0;document.getElementById("vendorPaid").value=0;persist();notify("Vendor ditambahkan")});
+document.getElementById("depositForm").addEventListener("submit",e=>{e.preventDefault();state.deposits.push({who:document.getElementById("depositor").value.trim(),amount:Number(document.getElementById("depositAmount").value)||0,date:document.getElementById("depositDate").value||new Date().toISOString().slice(0,10)});document.getElementById("depositAmount").value="";persist();notify("Setoran dicatat")});
+document.getElementById("depositDate").value=new Date().toISOString().slice(0,10);
+document.getElementById("notes").addEventListener("change",e=>{state.notes=e.target.value;localStorage.setItem(KEY,JSON.stringify(state))});
+document.querySelectorAll("#checklist input").forEach((el,i)=>el.addEventListener("change",()=>{state.checks[i]=el.checked;localStorage.setItem(KEY,JSON.stringify(state))}));
+function exportCSV(){let rows=[["Kategori","Persentase","Estimasi","Realisasi"],...state.categories.map(c=>[c.name,c.pct,state.budget*c.pct/100,c.actual||0]),[],["Vendor","Kategori","Total","DP","Terbayar","Sisa","Jatuh Tempo"],...state.vendors.map(v=>[v.name,v.cat,v.total,v.dp,v.paid,Math.max(0,v.total-v.paid),v.due])];let csv=rows.map(r=>r.map(x=>'"'+String(x??"").replace(/"/g,'""')+'"').join(",")).join("\r\n");let blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="budget-nikah-rafi-faradita.csv";a.click();URL.revokeObjectURL(url)}
+render();
+</script>
+</body>
+</html>
+
