@@ -464,6 +464,7 @@ tbody tr:hover { background: #f7f7f0; }
   .reveal { opacity: 1; transform: none; }
 }
 </style>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 
 <body>
@@ -478,6 +479,7 @@ tbody tr:hover { background: #f7f7f0; }
     </div>
     <div class="top-actions">
       <button class="secondary" onclick="exportCSV()">↗ Ekspor CSV</button>
+      <button class="secondary" onclick="loginGoogle()">☁ Hubungkan Google</button>
       <button class="primary" onclick="document.querySelector('#expense-form').scrollIntoView({behavior:'smooth'})">+ Catat pengeluaran</button>
     </div>
   </header>
@@ -734,10 +736,18 @@ tbody tr:hover { background: #f7f7f0; }
         <div class="form-actions"><button class="secondary" onclick="saveNotes()">Simpan catatan</button></div>
       </section>
 
-      <section class="card reveal">
-        <div class="eyebrow">Data & privacy</div>
-        <h3>Pengelolaan data</h3>
-        <p class="muted">Data saat ini disimpan di browser yang digunakan. Data tidak otomatis muncul di perangkat pasangan.</p>
+      <section class="card reveal" id="google-sync-section">
+        <div class="eyebrow">Shared planning</div>
+        <h3>Sinkronisasi Google Sheets</h3>
+        <p class="muted">Hubungkan akun Google yang memiliki akses ke spreadsheet bersama. Perubahan akan disimpan ke Google Sheets saat akun terhubung.</p>
+        <p id="google-sync-status" class="muted" role="status" aria-live="polite">Belum terhubung ke Google Sheets. Data lokal tetap tersimpan di browser ini.</p>
+        <div class="form-actions">
+          <button class="primary" onclick="loginGoogle()">Hubungkan / masuk</button>
+          <button class="secondary" onclick="loadSharedData()">Muat data bersama</button>
+          <button class="secondary" onclick="syncLocalToSheets()">Kirim data lokal</button>
+          <button class="danger small" onclick="logoutGoogle()">Putuskan akun</button>
+        </div>
+        <p class="muted" style="margin-top:14px">Catatan: gunakan spreadsheet khusus untuk planner ini. Hindari mengedit data yang sama secara bersamaan; perubahan terakhir yang disinkronkan dapat menimpa versi sebelumnya.</p>
         <button class="secondary" style="width:100%" onclick="exportCSV()">Ekspor data CSV</button>
       </section>
     </aside>
@@ -753,6 +763,19 @@ tbody tr:hover { background: #f7f7f0; }
 
 <script>
 const STORAGE_KEY = "rafiFaraditaWeddingTrackerV2";
+
+// KONFIGURASI: isi dua nilai berikut dari Google Cloud dan Google Sheets.
+const GOOGLE_SYNC = {
+  clientId: "496136307549-44vdoahok303sb8q87dmqnrpnsee0dc4.apps.googleusercontent.com",
+  spreadsheetId: "1v0rYeFE_98ofmr6EgCwK6QBNgxtw10nAD8-ZI-XT_J8",
+  sheetName: "TrackerData",
+  cell: "A1",
+  scope: "https://www.googleapis.com/auth/spreadsheets"
+};
+let googleTokenClient = null;
+let googleAccessToken = null;
+let googleSyncBusy = false;
+let googleSyncPending = false;
 
 const defaultState = {
   budget: 25000000,
@@ -792,6 +815,184 @@ function persist() {
   } catch (error) {
     console.error(error);
     showToast("Data gagal disimpan. Periksa penyimpanan browser.");
+  }
+  if (googleAccessToken) queueGoogleSync();
+}
+
+function setGoogleStatus(message) {
+  const el = document.getElementById("google-sync-status");
+  if (el) el.textContent = message;
+}
+
+function validateGoogleConfig() {
+  if (!GOOGLE_SYNC.clientId || GOOGLE_SYNC.clientId.startsWith("GANTI_") ||
+      !GOOGLE_SYNC.spreadsheetId || GOOGLE_SYNC.spreadsheetId.startsWith("GANTI_")) {
+    showToast("Isi clientId dan spreadsheetId di konfigurasi Google Sheets terlebih dahulu.");
+    setGoogleStatus("Konfigurasi belum lengkap. Isi OAuth Client ID dan Spreadsheet ID di index.html.");
+    return false;
+  }
+  return true;
+}
+
+function loginGoogle() {
+  if (!validateGoogleConfig()) return;
+  if (!window.google?.accounts?.oauth2) {
+    setGoogleStatus("Library login Google belum siap. Tunggu sebentar lalu coba lagi.");
+    showToast("Login Google belum siap. Coba lagi sebentar.");
+    return;
+  }
+  googleTokenClient = window.google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_SYNC.clientId,
+    scope: GOOGLE_SYNC.scope,
+    callback: async response => {
+      if (response.error || !response.access_token) {
+        setGoogleStatus("Login Google gagal. Periksa OAuth Client ID dan izin akses.");
+        showToast("Gagal menghubungkan Google.");
+        return;
+      }
+      googleAccessToken = response.access_token;
+      setGoogleStatus("Google terhubung. Memeriksa data spreadsheet…");
+      await loadSharedData();
+    }
+  });
+  googleTokenClient.requestAccessToken({ prompt: "consent" });
+}
+
+function logoutGoogle() {
+  if (googleAccessToken && window.google?.accounts?.oauth2) {
+    window.google.accounts.oauth2.revoke(googleAccessToken, () => {});
+  }
+  googleAccessToken = null;
+  googleSyncPending = false;
+  setGoogleStatus("Akun Google diputuskan. Data lokal tetap tersimpan di browser ini.");
+  showToast("Koneksi Google diputuskan.");
+}
+
+function sheetsRange() {
+  return `${GOOGLE_SYNC.sheetName}!${GOOGLE_SYNC.cell}`;
+}
+
+async function sheetsRequest(method, range, body) {
+  if (!googleAccessToken) throw new Error("Belum login ke Google.");
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(GOOGLE_SYNC.spreadsheetId)}/values/${encodeURIComponent(range)}${method === "PUT" ? "?valueInputOption=RAW" : ""}`;
+  const response = await fetch(url, {
+    method,
+    headers: {
+      Authorization: `Bearer ${googleAccessToken}`,
+      ...(body ? { "Content-Type": "application/json" } : {})
+    },
+    ...(body ? { body: JSON.stringify(body) } : {})
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const message = result?.error?.message || `HTTP ${response.status}`;
+    if (response.status === 401) googleAccessToken = null;
+    throw new Error(message);
+  }
+  return result;
+}
+
+function hasUserData(data) {
+  return Boolean(data && (
+    (data.expenses && data.expenses.length) || (data.vendors && data.vendors.length) ||
+    (data.savings && data.savings.length) || data.notes ||
+    (data.checklist && data.checklist.some(item => item.done))
+  ));
+}
+
+async function loadSharedData() {
+  if (!googleAccessToken) {
+    setGoogleStatus("Hubungkan akun Google terlebih dahulu untuk memuat data bersama.");
+    showToast("Hubungkan akun Google terlebih dahulu.");
+    return;
+  }
+  try {
+    setGoogleStatus("Memuat data dari Google Sheets…");
+    const result = await sheetsRequest("GET", sheetsRange());
+    const cellValue = result.values?.[0]?.[0];
+    if (!cellValue) {
+      if (hasUserData(state)) {
+        if (confirm("Spreadsheet masih kosong. Kirim data lokal saat ini ke spreadsheet bersama?")) {
+          await syncLocalToSheets();
+        } else {
+          setGoogleStatus("Spreadsheet kosong. Data lokal tidak diubah.");
+        }
+      } else {
+        setGoogleStatus("Spreadsheet masih kosong. Tambahkan data lalu pilih ‘Kirim data lokal’.");
+      }
+      return;
+    }
+    let shared;
+    try { shared = JSON.parse(cellValue); }
+    catch { throw new Error("Isi TrackerData!A1 bukan data JSON yang valid."); }
+    if (!shared || typeof shared !== "object" || !Array.isArray(shared.expenses) ||
+        !Array.isArray(shared.vendors) || !Array.isArray(shared.savings)) {
+      throw new Error("Struktur data di spreadsheet tidak sesuai dengan Wedding Planner.");
+    }
+    if (hasUserData(state) && !confirm("Muat data bersama? Data lokal di browser ini akan diganti dengan data dari spreadsheet.")) {
+      setGoogleStatus("Pemuatan dibatalkan. Data lokal tetap digunakan.");
+      return;
+    }
+    state = { ...structuredClone(defaultState), ...shared };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    render();
+    setGoogleStatus("Data berhasil dimuat dari Google Sheets. Perubahan berikutnya akan disinkronkan otomatis.");
+    showToast("Data bersama berhasil dimuat.");
+  } catch (error) {
+    console.error(error);
+    setGoogleStatus(`Gagal memuat data: ${error.message}`);
+    showToast("Gagal memuat Google Sheets. Periksa konfigurasi dan akses.");
+  }
+}
+
+async function syncLocalToSheets() {
+  if (!googleAccessToken) {
+    showToast("Hubungkan akun Google terlebih dahulu.");
+    setGoogleStatus("Belum login. Hubungkan akun Google untuk mengirim data lokal.");
+    return;
+  }
+  if (!confirm("Kirim seluruh data lokal ke Google Sheets? Data di TrackerData!A1 akan ditimpa.")) return;
+  try {
+    await writeSharedData(JSON.stringify(state));
+    setGoogleStatus(`Data lokal berhasil dikirim ke Google Sheets · ${new Date().toLocaleTimeString("id-ID")}`);
+    showToast("Data lokal berhasil disinkronkan.");
+  } catch (error) {
+    console.error(error);
+    setGoogleStatus(`Sinkronisasi gagal: ${error.message}`);
+    showToast("Sinkronisasi gagal. Periksa koneksi dan izin spreadsheet.");
+  }
+}
+
+async function writeSharedData(serializedState) {
+  await sheetsRequest("PUT", sheetsRange(), {
+    range: sheetsRange(),
+    majorDimension: "ROWS",
+    values: [[serializedState]]
+  });
+}
+
+function queueGoogleSync() {
+  googleSyncPending = true;
+  if (!googleSyncBusy) runGoogleSyncQueue();
+}
+
+async function runGoogleSyncQueue() {
+  if (googleSyncBusy || !googleAccessToken) return;
+  googleSyncBusy = true;
+  try {
+    while (googleSyncPending && googleAccessToken) {
+      googleSyncPending = false;
+      const snapshot = JSON.stringify(state);
+      setGoogleStatus("Menyinkronkan perubahan ke Google Sheets…");
+      await writeSharedData(snapshot);
+      setGoogleStatus(`Tersinkron ke Google Sheets · ${new Date().toLocaleTimeString("id-ID")}`);
+    }
+  } catch (error) {
+    console.error(error);
+    setGoogleStatus(`Sinkronisasi otomatis gagal: ${error.message}. Coba hubungkan ulang atau kirim data lokal.`);
+  } finally {
+    googleSyncBusy = false;
+    if (googleSyncPending && googleAccessToken) runGoogleSyncQueue();
   }
 }
 
